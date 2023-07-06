@@ -170,6 +170,33 @@ on_message_acked(_ClientInfo = #{clientid := ClientId}, Message, _Env) ->
               [ClientId, emqx_message:format(Message)]).
 
 
+ekaf_init(_Env) ->
+  io:format("Init emqx plugin kafka....."),
+  {ok, BrokerValues} = application:get_env(emqx_plugin_kafka, broker),
+  KafkaHost = proplists:get_value(host, BrokerValues),
+  ?LOG_INFO("[KAFKA PLUGIN]KafkaHost = ~s~n", [KafkaHost]),
+  KafkaPort = proplists:get_value(port, BrokerValues),
+  ?LOG_INFO("[KAFKA PLUGIN]KafkaPort = ~s~n", [KafkaPort]),
+  KafkaPartitionStrategy = proplists:get_value(partitionstrategy, BrokerValues),
+  KafkaPartitionWorkers = proplists:get_value(partitionworkers, BrokerValues),
+  KafkaTopic = proplists:get_value(payloadtopic, BrokerValues),
+  ?LOG_INFO("[KAFKA PLUGIN]KafkaTopic = ~s~n", [KafkaTopic]),
+  application:set_env(ekaf, ekaf_bootstrap_broker, {KafkaHost, list_to_integer(KafkaPort)}),
+  application:set_env(ekaf, ekaf_partition_strategy, list_to_atom(KafkaPartitionStrategy)),
+  application:set_env(ekaf, ekaf_per_partition_workers, KafkaPartitionWorkers),
+  application:set_env(ekaf, ekaf_bootstrap_topics, list_to_binary(KafkaTopic)),
+  application:set_env(ekaf, ekaf_buffer_ttl, 10),
+  application:set_env(ekaf, ekaf_max_downtime_buffer_size, 5),
+  % {ok, _} = application:ensure_all_started(kafkamocker),
+  {ok, _} = application:ensure_all_started(gproc),
+  % {ok, _} = application:ensure_all_started(ranch),
+  {ok, _} = application:ensure_all_started(ekaf).
+
+ekaf_get_topic() ->
+  {ok, Topic} = application:get_env(ekaf, ekaf_bootstrap_topics),
+  Topic.
+
+
 format_payload(Message) ->
   %Username = emqx_message:get_header(username, Message),
   Topic = Message#message.topic,
